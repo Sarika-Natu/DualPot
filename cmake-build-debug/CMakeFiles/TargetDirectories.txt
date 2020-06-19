@@ -1,0 +1,3 @@
+/Users/sarika/workspace/DualPot/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/sarika/workspace/DualPot/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/sarika/workspace/DualPot/cmake-build-debug/CMakeFiles/Motiv_DualPot.dir
