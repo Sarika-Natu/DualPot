@@ -22,6 +22,7 @@ bool incr_ctrl;           /* Wiper increment control input*/
 bool prevIncr;            /* variable to store previous value increment control input*/
 bool chAflag;             /* flag for channel A selection */
 bool chBflag;             /* flag for channel B selection */
+bool wiper_flag;          /* flag for initial setting of wiper */
 
 /******************************************************************************/
 //	macros
@@ -47,7 +48,7 @@ void DualPotDrv_DeInit(void);
 u8 getTap(f32 resistance);
 void setWiper(u8 channel);
 
-void * ISR_UPDWN_Handler(void);
-void * ISR_INCEDGE_Handler(void);
+void ISR_UPDWN_Handler(void);
+void ISR_INCEDGE_Handler(void);
 
 #endif //MOTIV_DUALPOT_DUALPOT_DRV_H

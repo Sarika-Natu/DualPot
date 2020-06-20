@@ -33,17 +33,18 @@ void DualPotDrv_Init(void){
 
     if(UD_FREQ <= PeriodicFreqHzMax){
         /* Setting UP-DOWN rolling frequency and assign UP-DOWN interrupt handler*/
-        PeriodicConfig(UD_FREQ, ISR_UPDWN_Handler());
+        PeriodicConfig(UD_FREQ, ISR_UPDWN_Handler);
     }
     if(INC_FREQ <= PeriodicFreqHzMax){
         /* Setting increment rolling frequency and assign INC interrupt handler*/
-        PeriodicConfig(INC_FREQ, ISR_INCEDGE_Handler());
+        PeriodicConfig(INC_FREQ, ISR_INCEDGE_Handler);
     }
 
     curr_Tap = MID_TAP;                     /* Initialize tap value to 128 at power-up */
     chAflag = False;                        /* Initialize channel A flag */
     chBflag = False;                        /* Initialize channel B flag */
     prevIncr = True;                        /* Initialize previous increment value */
+    wiper_flag = False;
 
     cs = True;                              /* Initialize chip select */
     PinWrite(PinCSA, True);             /* Write chip select value to channel A */
@@ -58,6 +59,7 @@ void DualPotDrv_Init(void){
     PinWrite(PinINCB, True);            /* Write INC control value to channel B */
 
     PeriodicIruptEnable();                  /* Enabling interrupts */
+    PeriodicStart();                        /* start timer */
 
 }
 
@@ -121,14 +123,20 @@ void setWiper(u8 channel) {
         /* do nothing */
     }
 
-    if((True == chAflag) || (True == chBflag)){     /* check for valid channel is selected */
+    if(((True == chAflag) || (True == chBflag)) && (False == wiper_flag)){     /* check for valid channel is selected */
         cs = False;                                 /* setting chip select of channel to low  - enabling */
         PinWrite(Pin_cs, cs);
         updwn_ctrl = True;                          /* setting UP/DWN control signal as down */
         PinWrite(Pin_updwn, updwn_ctrl);
         incr_ctrl = True;                           /* setting increment control signal to high */
         PinWrite(Pin_Incr, incr_ctrl);
-        PeriodicStart();                            /* start timer */
+        wiper_flag = True;
+        //PeriodicStart();                            /* start timer */
+    }else if(((True == chAflag) || (True == chBflag)) && (True == wiper_flag)){
+        incr_ctrl = True;                           /* setting increment control signal to high */
+        PinWrite(Pin_Incr, incr_ctrl);
+    }else{
+
     }
 
     if(False == updwn_ctrl){                          /* check if UP/DWN control signal is low */
@@ -161,44 +169,44 @@ void DualPotDrv_DeInit(void){
 }
 
 /********************************************************************
-* FUNCTION   : void * ISR_UPDWN_Handler(void)
+* FUNCTION   : void ISR_UPDWN_Handler(void)
 * PURPOSE    : ISR
 * PARAMETERS : void
 * RETURN     : void
 **********************************************************************/
-void * ISR_UPDWN_Handler(void){
+void ISR_UPDWN_Handler(void){
     //PeriodicStop();
-    PeriodicIruptFlagClear();
-    updwn_ctrl = False;
-    if(True == chAflag){
-        PinWrite(PinUDA, updwn_ctrl);
-    }else if(True == chBflag){
-        PinWrite(PinUDB, updwn_ctrl);
+    PeriodicIruptFlagClear();                   /* Clear interrupt flag */
+    if((True == chAflag) || (True == chBflag)){
+        updwn_ctrl = False;                     /* Clear UP/DWN control signal */
+        if(True == chAflag){
+            PinWrite(PinUDA, updwn_ctrl);
+        }else if(True == chBflag){
+            PinWrite(PinUDB, updwn_ctrl);
+        }
     }
-
-    return NULL;
 }
 
 /********************************************************************
-* FUNCTION   : void * ISR_INCEDGE_Handler(void)
+* FUNCTION   : void ISR_INCEDGE_Handler(void)
 * PURPOSE    : ISR
 * PARAMETERS : void
 * RETURN     : void
 **********************************************************************/
-void * ISR_INCEDGE_Handler(void){
+void ISR_INCEDGE_Handler(void){
     //PeriodicStop();
-    PeriodicIruptFlagClear();
-    incr_ctrl = !incr_ctrl;
-    if(True == incr_ctrl){
-        prevIncr = True;
+    PeriodicIruptFlagClear();                       /* Clear interrupt flag */
+    if((True == chAflag) || (True == chBflag)){
+        incr_ctrl = !incr_ctrl;                     /* Invert INC control signal */
+        if(True == incr_ctrl){
+            prevIncr = True;                        /* Store INC value if its TRUE for detect falling edge */
+        }
+        if(True == chAflag){
+            PinWrite(PinUDA, incr_ctrl);
+        }else if(True == chBflag){
+            PinWrite(PinUDB, incr_ctrl);
+        }
     }
-    if(True == chAflag){
-        PinWrite(PinUDA, incr_ctrl);
-    }else if(True == chBflag){
-        PinWrite(PinUDB, incr_ctrl);
-    }
-
-    return NULL;
 }
 
 
