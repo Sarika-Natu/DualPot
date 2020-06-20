@@ -16,7 +16,6 @@
 /******************************************************************************/
 //	includes
 /******************************************************************************/
-#include <stdio.h>
 #include "DualPot_Drv.h"
 
 /********************************************************************
@@ -31,20 +30,18 @@ void DualPotDrv_Init(void){
 
     PinModuleInit();                        /* Initialize pin module */
 
-    if(UD_FREQ <= PeriodicFreqHzMax){
+    if(TIMER_FREQ <= PeriodicFreqHzMax){
         /* Setting UP-DOWN rolling frequency and assign UP-DOWN interrupt handler*/
-        PeriodicConfig(UD_FREQ, ISR_UPDWN_Handler);
-    }
-    if(INC_FREQ <= PeriodicFreqHzMax){
-        /* Setting increment rolling frequency and assign INC interrupt handler*/
-        PeriodicConfig(INC_FREQ, ISR_INCEDGE_Handler);
+        PeriodicConfig(TIMER_FREQ, ISR_Timer25us_Handler);
     }
 
     curr_Tap = MID_TAP;                     /* Initialize tap value to 128 at power-up */
     chAflag = False;                        /* Initialize channel A flag */
     chBflag = False;                        /* Initialize channel B flag */
     prevIncr = True;                        /* Initialize previous increment value */
-    wiper_flag = False;
+    MoveUpFlag = False;
+    MoveDownFlag = False;
+    updwn50usFlag = False;
 
     cs = True;                              /* Initialize chip select */
     PinWrite(PinCSA, True);             /* Write chip select value to channel A */
@@ -71,19 +68,30 @@ void DualPotDrv_Init(void){
 * RETURN     : bool
 **********************************************************************/
 bool DualPotDrv_Main(u8 channel,f32 resistance) {
-    u8 tapVal;
+    if((resistance <= MAX_RESISTANCE) && ((channel == chA) || (channel == chB))){   /* Checking if resistance and channel is in range */
+        tapVal = getTap(resistance);                /* Get tap value for the provided resistance */
 
-    tapVal = getTap(resistance);            /* Get tap value for the provided resistance */
+        setWiper();
 
-    while (curr_Tap >= tapVal) {            /* Run while loop till desired tap value is not attained */
-        setWiper(channel);                  /* setting inputs to control wiper terminal(WA/WB) */
-    }
+        if(tapVal <= MID_TAP){                      /* Check digital resistive value is less than LA/LB */
+                MoveDownFlag = True;
+        }else if(tapVal > MID_TAP){                 /* Check digital resistive value nearer to HA/HB */
+                MoveUpFlag = True;
+        }else{}
 
-    if(curr_Tap == tapVal){                 /* if desired tap value is achieved return success else fail */
-        return True;
+        generateSig(channel);                       /* setting inputs to control wiper terminal(WA/WB) */
+        if(curr_Tap == tapVal){                     /* if desired tap value is achieved return success else fail */
+            MoveDownFlag = False;
+            MoveUpFlag = False;
+            PeriodicStop();                         /* timer stop */
+            return True;
+        }
     } else{
         return False;
     }
+
+
+    return False;
 
 
 }
@@ -104,50 +112,64 @@ u8 getTap(f32 resistance) {
 * PARAMETERS : u8 channel       //channel for resistance setting
 * RETURN     : void
 **********************************************************************/
-void setWiper(u8 channel) {
-    PinT Pin_updwn;
-    PinT Pin_cs;
-    PinT Pin_Incr;
+void setWiper(void){
+    if(False == updwn_ctrl){                          /* check if UP/DWN control signal is low */
+        if(False == cs){                              /* check if chip select signal is low */
+            if((prevIncr == True) && (incr_ctrl == False)){   /* check for falling edge of increment control signal */
+                if(MoveDownFlag == True){
+                    /* decrementing the tap value by one position
+                    * as wiper terminal should be moved one tap location towards low terminal */
+                    curr_Tap--;
+
+                }else if(MoveUpFlag == True){
+                    /* incrementing the tap value by one position
+                    * as wiper terminal should be moved one tap location towards high terminal */
+                    curr_Tap++;
+                }else{
+                }
+                prevIncr = incr_ctrl;               /* storing current INC value */
+            }
+        }
+    }
+}
+
+/********************************************************************
+* FUNCTION   : void generateSig(u8 channel)
+* PURPOSE    : Calculate tap value for desired resistance
+* PARAMETERS : u8 channel       //channel for resistance setting
+* RETURN     : void
+**********************************************************************/
+void generateSig(u8 channel) {
 
     if(channel == chA){                     /* Allocate pins for CS, UD, INC; if channel A is requested */
-        Pin_cs = PinCSA;
-        Pin_updwn = PinUDA;
-        Pin_Incr = PinINCA;
         chAflag = True;                    /* set flag for channel A */
     }else if(channel == chB){              /* Allocate pins for CS, UD, INC; if channel B is requested */
-        Pin_cs = PinCSB;
-        Pin_updwn = PinUDB;
-        Pin_Incr = PinINCB;
         chBflag = True;                     /* set flag for channel B */
     }else{
         /* do nothing */
     }
 
-    if(((True == chAflag) || (True == chBflag)) && (False == wiper_flag)){     /* check for valid channel is selected */
+    if((True == chAflag) || (True == chBflag)){     /* check for valid channel is selected */
         cs = False;                                 /* setting chip select of channel to low  - enabling */
-        PinWrite(Pin_cs, cs);
-        updwn_ctrl = True;                          /* setting UP/DWN control signal as down */
-        PinWrite(Pin_updwn, updwn_ctrl);
+        if(MoveDownFlag == True){
+            updwn_ctrl = False;                          /* setting UP/DWN control signal as down */
+        } else if(MoveUpFlag == True){
+            updwn_ctrl = True;                          /* setting UP/DWN control signal as down */
+        } else{
+        }
         incr_ctrl = True;                           /* setting increment control signal to high */
-        PinWrite(Pin_Incr, incr_ctrl);
-        wiper_flag = True;
-        //PeriodicStart();                            /* start timer */
-    }else if(((True == chAflag) || (True == chBflag)) && (True == wiper_flag)){
-        incr_ctrl = True;                           /* setting increment control signal to high */
-        PinWrite(Pin_Incr, incr_ctrl);
+        if(True == chAflag){
+            PinWrite(PinCSA, cs);
+            PinWrite(PinUDA, updwn_ctrl);
+            PinWrite(PinINCA, incr_ctrl);
+        }else if(True == chBflag){
+            PinWrite(PinCSB, cs);
+            PinWrite(PinUDB, updwn_ctrl);
+            PinWrite(PinINCB, incr_ctrl);
+        }
+
     }else{
 
-    }
-
-    if(False == updwn_ctrl){                          /* check if UP/DWN control signal is low */
-        if(False == cs){                              /* check if chip select signal is low */
-            if((prevIncr == True) && (incr_ctrl == False)){   /* check for falling edge of increment control signal */
-                /* decrementing the tap value by one position
-                 * as wiper terminal should be moved one tap location towards low terminal */
-                curr_Tap--;
-                prevIncr = incr_ctrl;               /* storing current INC value */
-            }
-        }
     }
 
 }
@@ -159,7 +181,7 @@ void setWiper(u8 channel) {
 * RETURN     : void
 **********************************************************************/
 void DualPotDrv_DeInit(void){
-    PeriodicStop();                         /* timer stop */
+
     PinWrite(PinCSA, True);             /* setting chip select of channel B to high */
     PinWrite(PinCSB, True);             /* setting chip select of channel B to high */
     PinWrite(PinUDA, False);            /* setting UP/DWN control signal of channel A to low*/
@@ -169,44 +191,51 @@ void DualPotDrv_DeInit(void){
 }
 
 /********************************************************************
-* FUNCTION   : void ISR_UPDWN_Handler(void)
-* PURPOSE    : ISR
-* PARAMETERS : void
-* RETURN     : void
-**********************************************************************/
-void ISR_UPDWN_Handler(void){
-    //PeriodicStop();
-    PeriodicIruptFlagClear();                   /* Clear interrupt flag */
-    if((True == chAflag) || (True == chBflag)){
-        updwn_ctrl = False;                     /* Clear UP/DWN control signal */
-        if(True == chAflag){
-            PinWrite(PinUDA, updwn_ctrl);
-        }else if(True == chBflag){
-            PinWrite(PinUDB, updwn_ctrl);
-        }
-    }
-}
-
-/********************************************************************
 * FUNCTION   : void ISR_INCEDGE_Handler(void)
 * PURPOSE    : ISR
 * PARAMETERS : void
 * RETURN     : void
 **********************************************************************/
-void ISR_INCEDGE_Handler(void){
+void ISR_Timer25us_Handler(void){
     //PeriodicStop();
-    PeriodicIruptFlagClear();                       /* Clear interrupt flag */
-    if((True == chAflag) || (True == chBflag)){
+
+    if(((True == chAflag) || (True == chBflag)) && (curr_Tap != tapVal)){
+
+        /* UP/Down logic*/
+        if(updwn50usFlag == True){
+
+            updwn50usFlag = False;
+            if(MoveDownFlag == True){
+                updwn_ctrl = False;                     /* Clear UP/DWN control signal */
+            }else if(MoveUpFlag == True){
+                updwn_ctrl = True;                     /* Set UP/DWN control signal */
+            } else{
+            }
+
+            if(True == chAflag){
+                PinWrite(PinUDA, updwn_ctrl);
+            }else if(True == chBflag){
+                PinWrite(PinUDB, updwn_ctrl);
+            }
+        }else{
+            updwn50usFlag = True;
+        }
+
+        /* Inc logic*/
         incr_ctrl = !incr_ctrl;                     /* Invert INC control signal */
         if(True == incr_ctrl){
             prevIncr = True;                        /* Store INC value if its TRUE for detect falling edge */
         }
+
+        /* Writing to respective pins*/
         if(True == chAflag){
             PinWrite(PinUDA, incr_ctrl);
         }else if(True == chBflag){
             PinWrite(PinUDB, incr_ctrl);
         }
     }
+
+    PeriodicIruptFlagClear();                       /* Clear interrupt flag */
 }
 
 

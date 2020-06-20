@@ -16,13 +16,16 @@
 //	variables
 /******************************************************************************/
 static u8 curr_Tap;       /* variable to store current Wiper tap value*/
+u8 tapVal;
 bool cs;                  /* Wiper chip select input*/
 bool updwn_ctrl;          /* Wiper up/down control input*/
 bool incr_ctrl;           /* Wiper increment control input*/
 bool prevIncr;            /* variable to store previous value increment control input*/
 bool chAflag;             /* flag for channel A selection */
 bool chBflag;             /* flag for channel B selection */
-bool wiper_flag;          /* flag for initial setting of wiper */
+bool MoveDownFlag;
+bool MoveUpFlag;
+bool updwn50usFlag;
 
 /******************************************************************************/
 //	macros
@@ -33,9 +36,9 @@ bool wiper_flag;          /* flag for initial setting of wiper */
 #define MAX_RESISTANCE ((f32)10000)
 #define FULL_TAP 255
 #define MID_TAP 128
+#define MIN_TAP 0
 
-#define UD_FREQ ((f32)20000)      /* Rollover frequency to attain 50ms UP/DWN signal*/
-#define INC_FREQ ((f32)40000)     /* Rollover frequency to attain 25ms INC signal*/
+#define TIMER_FREQ ((f32)40000)     /* Rollover frequency to attain 25us signal*/
 
 
 /******************************************************************************/
@@ -46,9 +49,9 @@ bool DualPotDrv_Main(u8 channel ,f32 resistance);
 void DualPotDrv_DeInit(void);
 
 u8 getTap(f32 resistance);
-void setWiper(u8 channel);
+void setWiper(void);
+void generateSig(u8 channel);
 
-void ISR_UPDWN_Handler(void);
-void ISR_INCEDGE_Handler(void);
+void ISR_Timer25us_Handler(void);
 
 #endif //MOTIV_DUALPOT_DUALPOT_DRV_H
