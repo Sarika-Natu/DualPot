@@ -35,22 +35,30 @@ void DualPotDrv_Init(void){
         PeriodicConfig(TIMER_FREQ, ISR_Timer25us_Handler);
     }
 
-    curr_Tap = MID_TAP;                     /* Initialize tap value to 128 at power-up */
-    chAflag = False;                        /* Initialize channel A flag */
-    chBflag = False;                        /* Initialize channel B flag */
-    prevIncr = True;                        /* Initialize previous increment value */
-    MoveUpFlag = False;
-    MoveDownFlag = False;
+    channelA.curr_Tap = MID_TAP;                     /* Initialize tap value to 128 at power-up */
+    channelB.curr_Tap = MID_TAP;                     /* Initialize tap value to 128 at power-up */
+
+    channelA.sel_flag = False;                        /* Initialize channel A flag */
+    channelB.sel_flag = False;                        /* Initialize channel B flag */
+
+    channelA.MoveUpFlag = False;
+    channelA.MoveDownFlag = False;
+    channelB.MoveUpFlag = False;
+    channelB.MoveDownFlag = False;
+
     updwn50usFlag = False;
 
-    cs = True;                              /* Initialize chip select */
-    PinWrite(PinCSA, True);             /* Write chip select value to channel A */
-    PinWrite(PinCSB, True);             /* Write chip select value to channel B */
+    channelA.cs = True;
+    channelB.cs = True;                             /* Initialize chip select */
+    PinWrite(PinCSA, channelA.cs);             /* Write chip select value to channel A */
+    PinWrite(PinCSB, channelB.cs);             /* Write chip select value to channel B */
 
-    updwn_ctrl = False;                       /* Initialize UP/DWN control variable */
-    PinWrite(PinUDA, False);            /* Write UP/DWN control value to channel A */
-    PinWrite(PinUDB, False);            /* Write UP/DWN control value to channel B */
+    channelA.updwn_ctrl = False;                       /* Initialize UP/DWN control variable */
+    channelB.updwn_ctrl = False;                       /* Initialize UP/DWN control variable */
+    PinWrite(PinUDA, channelA.updwn_ctrl);            /* Write UP/DWN control value to channel A */
+    PinWrite(PinUDB, channelB.updwn_ctrl);            /* Write UP/DWN control value to channel B */
 
+    prevIncr = True;                        /* Initialize previous increment value */
     incr_ctrl = True;                        /* Initialize increment control variable */
     PinWrite(PinINCA, True);            /* Write INC control value to channel A */
     PinWrite(PinINCB, True);            /* Write INC control value to channel B */
@@ -69,31 +77,38 @@ void DualPotDrv_Init(void){
 **********************************************************************/
 bool DualPotDrv_Main(u8 channel,f32 resistance) {
     if((resistance <= MAX_RESISTANCE) && ((channel == chA) || (channel == chB))){   /* Checking if resistance and channel is in range */
-        tapVal = getTap(resistance);                /* Get tap value for the provided resistance */
+        if(channel == chA){
+            channelA.tapVal = getTap(resistance);                /* Get tap value for the provided resistance */
+        }else if(channel == chB){
+            channelB.tapVal = getTap(resistance);                /* Get tap value for the provided resistance */
+        }
 
         setWiper();
 
-        if(tapVal <= MID_TAP){                      /* Check digital resistive value is less than LA/LB */
-                MoveDownFlag = True;
-        }else if(tapVal > MID_TAP){                 /* Check digital resistive value nearer to HA/HB */
-                MoveUpFlag = True;
+        if(channelA.tapVal <= MID_TAP){                      /* Check digital resistive value is less than LA */
+            channelA.MoveDownFlag = True;
+        }else if(channelA.tapVal > MID_TAP){                 /* Check digital resistive value nearer to HA */
+            channelA.MoveUpFlag = True;
+        }else if(channelB.tapVal <= MID_TAP){                      /* Check digital resistive value is less than LB */
+            channelB.MoveDownFlag = True;
+        }else if(channelB.tapVal > MID_TAP){                 /* Check digital resistive value nearer to HB */
+            channelB.MoveUpFlag = True;
         }else{}
 
         generateSig(channel);                       /* setting inputs to control wiper terminal(WA/WB) */
-        if(curr_Tap == tapVal){                     /* if desired tap value is achieved return success else fail */
-            MoveDownFlag = False;
-            MoveUpFlag = False;
+
+        if((channelA.curr_Tap == channelA.tapVal) && (channelB.curr_Tap == channelB.tapVal)){    /* if desired tap value is achieved return success else fail */
+            channelA.MoveDownFlag = False;
+            channelA.MoveUpFlag = False;
+            channelB.MoveDownFlag = False;
+            channelB.MoveUpFlag = False;
             PeriodicStop();                         /* timer stop */
             return True;
         }
     } else{
         return False;
     }
-
-
     return False;
-
-
 }
 /********************************************************************
 * FUNCTION   : u8 getTap(f32 resistance)
@@ -113,23 +128,38 @@ u8 getTap(f32 resistance) {
 * RETURN     : void
 **********************************************************************/
 void setWiper(void){
-    if(False == updwn_ctrl){                          /* check if UP/DWN control signal is low */
-        if(False == cs){                              /* check if chip select signal is low */
-            if((prevIncr == True) && (incr_ctrl == False)){   /* check for falling edge of increment control signal */
-                if(MoveDownFlag == True){
-                    /* decrementing the tap value by one position
-                    * as wiper terminal should be moved one tap location towards low terminal */
-                    curr_Tap--;
+    if(False == channelA.cs){                              /* check if chip select signal is low */
+        if((prevIncr == True) && (incr_ctrl == False)){   /* check for falling edge of increment control signal */
+            if((channelA.MoveDownFlag == True) && (channelA.curr_Tap == MIN_TAP)){
+                /* decrementing the tap value by one position
+                * as wiper terminal should be moved one tap location towards low terminal */
+                channelA.curr_Tap--;
 
-                }else if(MoveUpFlag == True){
-                    /* incrementing the tap value by one position
-                    * as wiper terminal should be moved one tap location towards high terminal */
-                    curr_Tap++;
-                }else{
-                }
-                prevIncr = incr_ctrl;               /* storing current INC value */
+            }else if((channelA.MoveUpFlag == True)&& (channelA.curr_Tap == FULL_TAP)){
+                /* incrementing the tap value by one position
+                * as wiper terminal should be moved one tap location towards high terminal */
+                channelA.curr_Tap++;
+            }else{
             }
+            prevIncr = incr_ctrl;               /* storing current INC value */
         }
+    }else if(False == channelB.cs){                              /* check if chip select signal is low */
+        if((prevIncr == True) && (incr_ctrl == False)){   /* check for falling edge of increment control signal */
+            if((channelB.MoveDownFlag == True) && (channelB.curr_Tap == MIN_TAP)){
+                /* decrementing the tap value by one position
+                * as wiper terminal should be moved one tap location towards low terminal */
+                channelB.curr_Tap--;
+
+            }else if((channelB.MoveUpFlag == True)&& (channelB.curr_Tap == FULL_TAP)){
+                /* incrementing the tap value by one position
+                * as wiper terminal should be moved one tap location towards high terminal */
+                channelB.curr_Tap++;
+            }else{
+            }
+            prevIncr = incr_ctrl;               /* storing current INC value */
+        }
+    }else{
+
     }
 }
 
@@ -142,36 +172,43 @@ void setWiper(void){
 void generateSig(u8 channel) {
 
     if(channel == chA){                     /* Allocate pins for CS, UD, INC; if channel A is requested */
-        chAflag = True;                    /* set flag for channel A */
+        channelA.sel_flag = True;                    /* set flag for channel A */
     }else if(channel == chB){              /* Allocate pins for CS, UD, INC; if channel B is requested */
-        chBflag = True;                     /* set flag for channel B */
+        channelB.sel_flag = True;                     /* set flag for channel B */
     }else{
         /* do nothing */
     }
 
-    if((True == chAflag) || (True == chBflag)){     /* check for valid channel is selected */
-        cs = False;                                 /* setting chip select of channel to low  - enabling */
-        if(MoveDownFlag == True){
-            updwn_ctrl = False;                          /* setting UP/DWN control signal as down */
-        } else if(MoveUpFlag == True){
-            updwn_ctrl = True;                          /* setting UP/DWN control signal as down */
+    if(True == channelA.sel_flag){     /* check for valid channel is selected */
+
+        if(channelA.MoveDownFlag == True){
+            channelA.updwn_ctrl = False;                          /* setting UP/DWN control signal as down */
+        } else if(channelA.MoveUpFlag == True){
+            channelA.updwn_ctrl = True;                          /* setting UP/DWN control signal as down */
         } else{
         }
         incr_ctrl = True;                           /* setting increment control signal to high */
-        if(True == chAflag){
-            PinWrite(PinCSA, cs);
-            PinWrite(PinUDA, updwn_ctrl);
-            PinWrite(PinINCA, incr_ctrl);
-        }else if(True == chBflag){
-            PinWrite(PinCSB, cs);
-            PinWrite(PinUDB, updwn_ctrl);
-            PinWrite(PinINCB, incr_ctrl);
+        channelA.cs = False;                                 /* setting chip select of channel to low  - enabling */
+        PinWrite(PinCSA, channelA.cs);
+        PinWrite(PinUDA, channelA.updwn_ctrl);
+        PinWrite(PinINCA, incr_ctrl);
         }
-
-    }else{
+    else if(True == channelB.sel_flag){
+        if(channelB.MoveDownFlag == True){
+            channelB.updwn_ctrl = False;                          /* setting UP/DWN control signal as down */
+        } else if(channelB.MoveUpFlag == True){
+            channelB.updwn_ctrl = True;                          /* setting UP/DWN control signal as down */
+        } else{
+        }
+        incr_ctrl = True;                           /* setting increment control signal to high */
+        channelB.cs = False;                                 /* setting chip select of channel to low  - enabling */
+        PinWrite(PinCSB, channelB.cs);
+        PinWrite(PinUDB, channelB.updwn_ctrl);
+        PinWrite(PinINCB, incr_ctrl);
+        }
+    else{
 
     }
-
 }
 
 /********************************************************************
@@ -199,23 +236,30 @@ void DualPotDrv_DeInit(void){
 void ISR_Timer25us_Handler(void){
     //PeriodicStop();
 
-    if(((True == chAflag) || (True == chBflag)) && (curr_Tap != tapVal)){
+    if(((True == channelA.sel_flag) || (True == channelB.sel_flag)) && (channelA.curr_Tap != channelA.tapVal)){
 
         /* UP/Down logic*/
         if(updwn50usFlag == True){
+            if(True == channelA.sel_flag){
+                updwn50usFlag = False;
+                if(channelA.MoveDownFlag == True){
+                    channelA.updwn_ctrl = False;                     /* Clear UP/DWN control signal */
+                }else if(channelA.MoveUpFlag == True){
+                    channelA.updwn_ctrl = True;                     /* Set UP/DWN control signal */
+                } else{
+                }
 
-            updwn50usFlag = False;
-            if(MoveDownFlag == True){
-                updwn_ctrl = False;                     /* Clear UP/DWN control signal */
-            }else if(MoveUpFlag == True){
-                updwn_ctrl = True;                     /* Set UP/DWN control signal */
-            } else{
-            }
+                PinWrite(PinUDA, channelA.updwn_ctrl);
+            }else if(True == channelB.sel_flag){
+                updwn50usFlag = False;
+                if(channelB.MoveDownFlag == True){
+                    channelB.updwn_ctrl = False;                     /* Clear UP/DWN control signal */
+                }else if(channelB.MoveUpFlag == True){
+                    channelB.updwn_ctrl = True;                     /* Set UP/DWN control signal */
+                } else{
+                }
 
-            if(True == chAflag){
-                PinWrite(PinUDA, updwn_ctrl);
-            }else if(True == chBflag){
-                PinWrite(PinUDB, updwn_ctrl);
+                PinWrite(PinUDB, channelB.updwn_ctrl);
             }
         }else{
             updwn50usFlag = True;
@@ -228,9 +272,9 @@ void ISR_Timer25us_Handler(void){
         }
 
         /* Writing to respective pins*/
-        if(True == chAflag){
+        if(True == channelA.sel_flag){
             PinWrite(PinUDA, incr_ctrl);
-        }else if(True == chBflag){
+        }else if(True == channelB.sel_flag){
             PinWrite(PinUDB, incr_ctrl);
         }
     }
