@@ -51,7 +51,7 @@ static u8 getTap(f32 resistance);
 static void setWiper(void);
 static void generateSig(void);
 
-void ISR_Timer25us_Handler(void);
+//void ISR_Timer25us_Handler(void);
 
 /********************************************************************
 * FUNCTION   : void DualPotDrv_Init(void)
@@ -172,7 +172,8 @@ bool DualPotDrv_Main(u8 channel,f32 resistance) {
 * RETURN     : void
 **********************************************************************/
 void DualPotDrv_DeInit(void){
-
+    printf("Requested tap value for %d channel is %d!\n", channelA.channel, channelA.tapVal);
+    printf("Requested tap value for %d channel is %d!\n", channelB.channel, channelB.tapVal);
     PinWrite(PinCSA, True);             /* setting chip select of channel B to high */
     PinWrite(PinCSB, True);             /* setting chip select of channel B to high */
     PinWrite(PinUDA, False);            /* setting UP/DWN control signal of channel A to low*/
@@ -200,6 +201,7 @@ u8 getTap(f32 resistance) {
 static void setWiper(void){
     if(Running == channelA.STATE){                            /* check if chip select signal is low */
         if((prevIncr == True) && (incr_ctrl == False)){  /* check for falling edge of increment control signal */
+            printf("Current tap value for %d channel is %d!\n", channelA.channel, channelA.curr_Tap);
             if((channelA.MoveDownFlag == True) && (channelA.curr_Tap != MIN_TAP)){
                 /* decrementing the tap value by one position
                 * as wiper terminal should be moved one tap location towards low terminal */
@@ -212,26 +214,26 @@ static void setWiper(void){
                     channelA.curr_Tap++;
                 }/*ELSE: Do nothing*/
             }
-            prevIncr = incr_ctrl;               /* storing current INC value */
         }
     }
     if(Running == channelB.STATE){                              /* check if chip select signal is low */
         if((prevIncr == True) && (incr_ctrl == False)){   /* check for falling edge of increment control signal */
-            if((channelB.MoveDownFlag == True) && (channelB.curr_Tap == MIN_TAP)){
+            printf("Current tap value for %d channel is %d!\n", channelB.channel, channelB.curr_Tap);
+            if((channelB.MoveDownFlag == True) && (channelB.curr_Tap != MIN_TAP)){
                 /* decrementing the tap value by one position
                 * as wiper terminal should be moved one tap location towards low terminal */
                 channelB.curr_Tap--;
 
             }else {
-                if((channelB.MoveUpFlag == True)&& (channelB.curr_Tap == FULL_TAP)){
+                if((channelB.MoveUpFlag == True)&& (channelB.curr_Tap != FULL_TAP)){
                     /* incrementing the tap value by one position
                     * as wiper terminal should be moved one tap location towards high terminal */
                     channelB.curr_Tap++;
                 }/*ELSE: Do nothing*/
             }
-            prevIncr = incr_ctrl;               /* storing current INC value */
         }
     }
+    prevIncr = incr_ctrl;               /* storing current INC value */
 }
 
 /********************************************************************
@@ -273,9 +275,7 @@ static void generateSig(void) {
         PinWrite(PinINCB, incr_ctrl);
         channelB.STATE = Setup1;
     }
-    if((channelA.STATE == Setup1) || (channelB.STATE == Setup1)){
-        PeriodicStart();                      /* start timer */
-    }
+
     if((channelA.STATE == Setup1) && (timer_start == False)){
         PeriodicStart();
         timer_start = True;
@@ -338,7 +338,7 @@ void ISR_Timer25us_Handler(void){
             updwn50usFlag = True;
         }
 
-        if((channelA.STATE == Setup2) || channelB.STATE == Setup2 || channelA.STATE == Running || channelA.STATE == Running){
+        if((channelA.STATE == Setup2) || (channelB.STATE == Setup2) || (channelA.STATE == Running) || (channelB.STATE == Running)){
             /* Inc logic*/
             incr_ctrl = !incr_ctrl;                     /* Invert INC control signal */
             if(True == incr_ctrl){
@@ -346,11 +346,11 @@ void ISR_Timer25us_Handler(void){
             }
 
             /* Writing to respective pins*/
-            if(chA == channelA.channel){
+            if((chA == channelA.channel) && (channelA.STATE != Stop)){
                 PinWrite(PinINCA, incr_ctrl);
                 channelA.STATE = Running;
             }
-            if(chB == channelB.channel){
+            if((chB == channelB.channel) && (channelB.STATE != Stop)){
                 PinWrite(PinINCB, incr_ctrl);
                 channelB.STATE = Running;
             }/*ELSE: Do nothing*/
