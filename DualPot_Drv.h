@@ -21,11 +21,12 @@
 /******************************************************************************/
 #define chA 1U
 #define chB 2U
-#define chNone 0U
+
 #define FULL_TAP 255U
 #define MID_TAP 128U
 #define MIN_TAP 0U
 
+#define MIN_RESISTANCE ((f32)0)
 #define MAX_RESISTANCE ((f32)10000)
 #define TIMER_FREQ ((f32)40000)     /* Rollover frequency to attain 25us signal*/
 
