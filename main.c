@@ -13,12 +13,13 @@ int main() {
     for (counter = 0; counter < 150; counter++)
     {
         printf("\nDual digi driver main function is called %d!\n", counter);
-        ISR_Timer25us_Handler();
+        ISR_Timer25us_Handler();  /* for testing purpose */
 
-        result1 = DualPotDrv_Main(2, 7000);
-        result = DualPotDrv_Main(1, 3000);
+        result = DualPotDrv_Main(1, 6000);
+        result1 = DualPotDrv_Main(2, 4000);
+        //result = DualPotDrv_Main(1, 6000);
 
-        if ((result == True) && (result1 == True)) {
+        if ((result1 == True) && (result1 == True)) {
             counter = 150;
         }
     }
@@ -26,6 +27,7 @@ int main() {
     printf("\nDual digi driver De-Init is called!\n");
     DualPotDrv_DeInit();
 
-    printf("\n****The result is %d****\n\n", result);
+    printf("\n****The result is %d****\n", result);
+    printf("\n****The result1 is %d****\n", result1);
     return 0;
 }
