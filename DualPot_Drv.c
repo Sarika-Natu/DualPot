@@ -7,10 +7,11 @@
 *           void DualPotDrv_DeInit(void)
 * NOTES : This application driver means to control
 *         a dual-channel digital potentiometer (MAX5389, 10 kΩ model)
-* AUTHOR : Sarika Natu         DATE : 19 Jun 2020
+* AUTHOR : Sarika Natu         DATE : 22 Jun 2020
 * CHANGES :
 * VERSION   DATE      WHO     DETAIL
 * 0.1.0   19Jun2020   SN      Dual pot driver implementation
+* 0.2.0   21Jun2020   SN      Multichannel support
 *H***********************************************************************/
 
 /******************************************************************************/
@@ -407,7 +408,7 @@ void ISR_Timer25us_Handler(void){
         /* Inverting the Increment control signal every 25us if channels are in Setup2/Running signal state */
         if((channelA.STATE == Setup2) || (channelB.STATE == Setup2) ||
                     (channelA.STATE == Running) || (channelB.STATE == Running)){
-            incr_ctrl = !incr_ctrl;
+            incr_ctrl ^= True;
 
             /* Store increment control value if its TRUE for detecting falling edge */
             if(True == incr_ctrl){

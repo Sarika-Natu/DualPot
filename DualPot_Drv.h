@@ -11,7 +11,7 @@
 #include "Pin.h"
 #include "Generic.h"
 #include "Periodic.h"
-#include <stdio.h>            /* for testing purpose */
+//#include <stdio.h>            /* for testing purpose */
 
 /******************************************************************************/
 //	variables
@@ -38,5 +38,5 @@
 void DualPotDrv_Init(void);
 bool DualPotDrv_Main(u8 channel ,f32 resistance);
 void DualPotDrv_DeInit(void);
-void ISR_Timer25us_Handler(void);         /* for testing purpose */
-#endif //MOTIV_DUALPOT_DUALPOT_DRV_H
+//void ISR_Timer25us_Handler(void);         /* for testing purpose */
+#endif //MOTIV_DUALPOT_DRV_H
