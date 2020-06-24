@@ -118,12 +118,12 @@ bool DualPotDrv_Main(u8 channel,f32 resistance) {
     bool retVal = False;                    /* return value */
 
     /* Checking if resistance and requested channel is in range */
-    if((resistance >= MIN_RESISTANCE) && (resistance <= MAX_RESISTANCE) && ((channel == chA) || (channel == chB))){
-        if(channel == chA){
+    if((resistance >= MIN_RESISTANCE) && (resistance <= MAX_RESISTANCE) && ((chA == channel) || (chB == channel))){
+        if(chA == channel){
             channelA.channel = chA;
             channelA.tapVal = getTap(resistance);   /* Get tap value for the provided resistance for channel A */
         }
-        if (channel == chB){
+        if (chB == channel){
             channelB.channel = chB;
             channelB.tapVal = getTap(resistance);   /* Get tap value for the provided resistance for channel B */
         }
@@ -158,12 +158,12 @@ bool DualPotDrv_Main(u8 channel,f32 resistance) {
         generateSig();                            /* setting initial inputs to control wiper terminal(WA/WB) */
 
         /* if desired tap value is achieved return success else fail */
-        if(channelA.curr_Tap == channelA.tapVal) {
+        if(channelA.tapVal == channelA.curr_Tap) {
             channelA.MoveDownFlag = False;          /* reset move up or move down flag for channel A */
             channelA.MoveUpFlag = False;
             channelA.STATE = Stop;                  /* change signal state to Stop for channel A */
         }
-        if(channelB.curr_Tap == channelB.tapVal){
+        if(channelB.tapVal == channelB.curr_Tap){
 
             channelB.MoveDownFlag = False;          /* reset move up or move down flag for channel B */
             channelB.MoveUpFlag = False;
@@ -171,9 +171,9 @@ bool DualPotDrv_Main(u8 channel,f32 resistance) {
         }
 
         /* If no channel is running, stop the timer and return successful */
-        if(((channelA.STATE == Stop) && (channelB.STATE == Initial)) ||
-                    ((channelA.STATE == Initial) && (channelB.STATE == Stop)) ||
-                    ((channelA.STATE == Stop) && (channelB.STATE == Stop))){
+        if(((Stop == channelA.STATE) && (Initial == channelB.STATE)) ||
+           ((Initial == channelA.STATE) && (Stop == channelB.STATE)) ||
+           ((Stop == channelA.STATE) && (Stop == channelB.STATE))){
             PeriodicStop();                         /* timer stop */
             retVal = True;
         }
@@ -231,12 +231,12 @@ static void setWiper(void){
     if(Running == channelA.STATE){
 
         /* Check for falling edge on increment control signal for Channel A */
-        if((prevIncr == True) && (incr_ctrl == False)){
+        if((True == prevIncr) && (False == incr_ctrl)){
 
             //printf("Current tap value for %d channel is %d!\n", channelA.channel, channelA.curr_Tap); /* for testing purpose */
 
             /* Check if the move down flag is true and if wiper terminal has not reached its minimum value*/
-            if((channelA.MoveDownFlag == True) && (channelA.curr_Tap != MIN_TAP)){
+            if((True == channelA.MoveDownFlag) && (MIN_TAP != channelA.curr_Tap)){
 
                 /* decrementing the tap value by one position
                 * as wiper terminal should be moved one tap location towards low terminal */
@@ -244,7 +244,7 @@ static void setWiper(void){
 
             }else {
                 /* Check if the move up flag is true and if wiper terminal has not reached its maximum value*/
-                if((channelA.MoveUpFlag == True) && (channelA.curr_Tap != FULL_TAP)){
+                if((True == channelA.MoveUpFlag) && (FULL_TAP != channelA.curr_Tap)){
 
                     /* incrementing the tap value by one position
                     * as wiper terminal should be moved one tap location towards high terminal */
@@ -255,15 +255,15 @@ static void setWiper(void){
     }
 
     /* Check if the signal state is Running for Channel A */
-    if(Running == channelB.STATE){
+    if(channelB.STATE == Running){
 
         /* Check for falling edge on increment control signal for Channel B */
-        if((prevIncr == True) && (incr_ctrl == False)){
+        if((True == prevIncr) && (False == incr_ctrl)){
 
             //printf("Current tap value for %d channel is %d!\n", channelB.channel, channelB.curr_Tap); /* for testing purpose */
 
             /* Check if the move down flag is true and if wiper terminal has not reached its minimum value*/
-            if((channelB.MoveDownFlag == True) && (channelB.curr_Tap != MIN_TAP)){
+            if((True == channelB.MoveDownFlag) && (MIN_TAP != channelB.curr_Tap)){
 
                 /* decrementing the tap value by one position
                 * as wiper terminal should be moved one tap location towards low terminal */
@@ -271,7 +271,7 @@ static void setWiper(void){
 
             }else {
                 /* Check if the move up flag is true and if wiper terminal has not reached its maximum value*/
-                if((channelB.MoveUpFlag == True)&& (channelB.curr_Tap != FULL_TAP)){
+                if((True == channelB.MoveUpFlag) && (FULL_TAP != channelB.curr_Tap)){
 
                     /* incrementing the tap value by one position
                     * as wiper terminal should be moved one tap location towards high terminal */
@@ -298,10 +298,10 @@ static void generateSig(void) {
     if((chA == channelA.channel) && (Initial == channelA.STATE)){
 
         /* Update Up/Down flag according to Move up and Move down flags */
-        if(channelA.MoveDownFlag == True){
+        if(True == channelA.MoveDownFlag){
             channelA.updwn_ctrl = False;                    /* setting Up/Down control signal as down */
         } else {
-            if(channelA.MoveUpFlag == True){
+            if(True == channelA.MoveUpFlag){
                 channelA.updwn_ctrl = True;                 /* setting Up/Down control signal as Up */
             }/*ELSE: Do nothing*/
         }
@@ -317,10 +317,10 @@ static void generateSig(void) {
     if((chB == channelB.channel) && (Initial == channelB.STATE)){
 
         /* Update Up/Down control signal according to Move up and Move down flags */
-        if(channelB.MoveDownFlag == True){
+        if(True == channelB.MoveDownFlag){
             channelB.updwn_ctrl = False;                     /* setting Up/Down control signal as down */
         } else {
-            if(channelB.MoveUpFlag == True){
+            if(True == channelB.MoveUpFlag){
                 channelB.updwn_ctrl = True;                  /* setting Up/Down control signal as Up */
             }/*ELSE: Do nothing*/
         }
@@ -332,11 +332,11 @@ static void generateSig(void) {
     }
 
     /* Start the timer if timer is not already running and if signal state of either channel is Setup1 */
-    if((channelA.STATE == Setup1) && (timer_start == False)){
+    if((Setup1 == channelA.STATE) && (False == timer_start)){
         PeriodicStart();
         timer_start = True;
     }else{
-        if((channelB.STATE == Setup1) && (timer_start == False)){
+        if((Setup1 == channelB.STATE) && (False == timer_start)){
             PeriodicStart();
             timer_start = True;
         }
@@ -356,7 +356,7 @@ void ISR_Timer25us_Handler(void){
     if((chA == channelA.channel) || (chB == channelB.channel)){
 
         /* If ISR is hit for the first time UpDown control signal will not be set as it needs 50us time*/
-        if(updwn50usFlag == True){
+        if(True == updwn50usFlag){
 
             updwn50usFlag = False;                      /* reset 50us timer flag for 50us completion*/
 
@@ -364,10 +364,10 @@ void ISR_Timer25us_Handler(void){
             if((chA == channelA.channel) && (Setup1 == channelA.STATE)){
 
                 /* Update Up/Down control signal according to Move up and Move down flags */
-                if(channelA.MoveDownFlag == True){
+                if(True == channelA.MoveDownFlag){
                     channelA.updwn_ctrl = False;            /* Clear Up/Down control signal */
                 }else{
-                    if(channelA.MoveUpFlag == True) {
+                    if(True == channelA.MoveUpFlag) {
                         channelA.updwn_ctrl = True;         /* Set Up/Down control signal */
                     }/*ELSE: Do nothing*/
                 }
@@ -380,10 +380,10 @@ void ISR_Timer25us_Handler(void){
             if((chB == channelB.channel) && (Setup1 == channelB.STATE)){
 
                 /* Update Up/Down control signal according to Move up and Move down flags */
-                if(channelB.MoveDownFlag == True){
+                if(True == channelB.MoveDownFlag){
                     channelB.updwn_ctrl = False;             /* Clear Up/Down control signal */
                 }else {
-                    if(channelB.MoveUpFlag == True){
+                    if(True == channelB.MoveUpFlag){
                         channelB.updwn_ctrl = True;          /* Set Up/Down control signal */
                     }/*ELSE: Do nothing*/
                 }
@@ -406,9 +406,9 @@ void ISR_Timer25us_Handler(void){
         }
 
         /* Inverting the Increment control signal every 25us if channels are in Setup2/Running signal state */
-        if((channelA.STATE == Setup2) || (channelB.STATE == Setup2) ||
-                    (channelA.STATE == Running) || (channelB.STATE == Running)){
-            incr_ctrl ^= True;
+        if((Setup2 == channelA.STATE) || (Setup2 == channelB.STATE) ||
+           (Running == channelA.STATE) || (Running == channelB.STATE)){
+            incr_ctrl = (bool) !incr_ctrl;
 
             /* Store increment control value if its TRUE for detecting falling edge */
             if(True == incr_ctrl){
@@ -416,11 +416,11 @@ void ISR_Timer25us_Handler(void){
             }
 
             /* Writing increment control signal values to respective pins*/
-            if((chA == channelA.channel) && (channelA.STATE != Stop)){
+            if((chA == channelA.channel) && (Stop != channelA.STATE)){
                 PinWrite(PinINCA, incr_ctrl);
                 channelA.STATE = Running;
             }
-            if((chB == channelB.channel) && (channelB.STATE != Stop)){
+            if((chB == channelB.channel) && (Stop != channelB.STATE)){
                 PinWrite(PinINCB, incr_ctrl);
                 channelB.STATE = Running;
             }/*ELSE: Do nothing*/
