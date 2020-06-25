@@ -30,6 +30,7 @@ typedef enum {
     Stop                    /* Done State */
 } Sig_states;
 
+#pragma pack(push, 1)
 struct DigiPot{
     u8 channel:8;               /* Channel indication */
     u8 curr_Tap:8;              /* store current Wiper tap value */
@@ -40,6 +41,7 @@ struct DigiPot{
     bool MoveUpFlag:1;          /* move up notification */
     Sig_states STATE;           /* state indication */
 }channelA,channelB;
+#pragma pack(pop)
 
 bool prevIncr;            /* variable to store previous value increment control input*/
 bool incr_ctrl;           /* Wiper increment control input*/
@@ -154,6 +156,7 @@ bool DualPotDrv_Main(u8 channel,f32 resistance) {
             }
         }
 
+        //printf("\n Size of Structure channelA = %lu\n\n",sizeof(channelA));
 
         generateSig();                            /* setting initial inputs to control wiper terminal(WA/WB) */
 
